@@ -1,22 +1,30 @@
 # KeeFarce-NG
 
-Universal KeePass 2.x plaintext password extraction tool. Remotely injects into a running KeePass process and dumps all database entries in cleartext.
+![KeeFarce-NG](screenshot.png)
+
+Universal KeePass 2.x plaintext password extraction tool. Injects into a running KeePass process and dumps all entries from unlocked databases. Supports remote execution via SMB and local mode.
 
 ## How It Works
 
-Three-stage DLL injection via SMB:
-1. **Inj.dll** — Opens the target KeePass process and injects the loader
-2. **ldr.dll** — Native loader that bootstraps the .NET runtime inside KeePass
-3. **KPX.dll** — .NET assembly that reflects into KeePass internals, walks the document model, and extracts all entries (titles, usernames, passwords, URLs, notes)
+Three-stage DLL injection chain:
+1. **Inj.dll** — Opens the target KeePass process and injects the loader via `CreateRemoteThread`
+2. **ldr.dll** — Native x64 loader that bootstraps the .NET CLR inside KeePass
+3. **KPX.dll** — .NET assembly that reflects into KeePass internals, walks the document model, and extracts all entries in cleartext
+
+**Remote mode** — uploads DLLs via SMB, triggers injection through your chosen execution method, retrieves the dump, and cleans up.
+
+**Local mode** — runs directly on the target machine. No network needed.
 
 ## Features
 
-- **Zero dependencies** — standalone Python script or single Windows EXE
+- **Zero dependencies** — standalone Python script, Windows EXE, or Linux binary
+- **Cross-platform** — runs from Windows, Linux, or anywhere Python runs
 - **Pure Python SMB/DCERPC/NTLM** — no impacket, no external libraries
-- **4 execution methods** — Task Scheduler (TSCH), Service Control (SVCCTL), WMI, WinRM
-- **SMB1/2/3 support** — auto-negotiation or forced dialect
-- **Pass-the-Hash** — authenticate with NTLM hash instead of password
+- **4 remote execution methods** — Task Scheduler (TSCH), Service Control (SVCCTL), WMI, WinRM
+- **SMB1/2/3** — auto-negotiation or forced dialect
+- **Pass-the-Hash** — authenticate with NTLM hash, no password needed
 - **Auto-cleanup** — removes all artifacts from target after extraction
+- **Local mode** — extract from KeePass on the current machine without credentials
 
 ## Usage
 
@@ -51,6 +59,24 @@ keefarce <target> <domain>/<user>:<password> --smb 3
 
 # Local mode (run directly on the target machine)
 keefarce --local
+```
+
+## Example Output
+
+```
+=== DATABASE: C:\Users\admin\Documents\passwords.kdbx ===
+
+[General]
+Title: Domain Admin
+User: administrator
+Pass: P@ssw0rd!2026
+URL: https://dc01.corp.local
+
+[Email]
+Title: Corporate Mail
+User: admin@corp.com
+Pass: Str0ng#Pass!
+URL: https://mail.corp.com
 ```
 
 ## Build
